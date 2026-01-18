@@ -66,7 +66,6 @@ library(performance) # Check model diagnostics
 
 
 ```{r}
-
 # Read in waste pile count data
 counts_gpx <- read_csv(here::here("week2", "data", "waste_pile_counts_gpx.csv")) %>% 
     rename("waste_piles" = "total",
@@ -332,18 +331,35 @@ The environment doesn't sit still during our experiment, so let's control for it
 Let's start by looking at a covariate balance table for across treatment conditions for average rain events. 
 
 ```{r}
-
+post_treat_subset %>% 
+    select(treat, waste_piles, rain_0_48hrs, rain_49_168hrs) %>% 
+    tbl_summary(
+        by = treat,
+        statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
+    modify_header(label ~ "**Variable**") %>% 
+    modify_spanning_header(c("stat_1", "stat_2") ~ "**Treatment**") 
 ```
 
 
 ```{r}
+m5_control2 <- lm(
+    log(waste_piles) ~ 
+        treat +
+        log(pre_count_avg) +
+        rain_0_48hrs + rain_49_168hrs,
+    data = post_treat_subset)
 
+summ(m5_control2,
+     model.fit = FALSE,
+     robust = "HC2")  # Heteroskedasticity robust standard error adj.
 ```
 Now that we have two fixed effects models, lets look at our results side by side. 
 
 
 ```{r}
-
+export_summs(m4_control, m5_control2, robust = "HC2",
+             model.names = c("M4 - Pre-treat","M5 - Add Rain"),
+             statistics = "none")
 ```
 :::{.callout-tip}
 ## Are neighborhoods independent?
@@ -354,7 +370,10 @@ We have another issue which may bias our treatment effect - the neighborhoods we
 Lets account for these paired neighborhoods by adding a standard error adjustment based on our clusters. We can make this adjustment with the fixed effects model we just created (`m5_control2`) . 
 
 ```{r}
-
+summ(m5_control2,
+     robust = "HC2",
+     cluster = "pair_id", # Add SE adj. based on pair-clusters
+     model.fit = FALSE)
 ```
 What are the key takeaways from this summary? Discuss with your neighbor! 
 
